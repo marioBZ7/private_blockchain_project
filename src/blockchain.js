@@ -11,6 +11,7 @@
 const SHA256 = require('crypto-js/sha256');
 const BlockClass = require('./block.js');
 const bitcoinMessage = require('bitcoinjs-message');
+const hex2ascii = require('hex2ascii');
 
 class Blockchain {
 
@@ -23,7 +24,6 @@ class Blockchain {
      * other backends to call asynchronous functions.
      */
     constructor() {
-        console.log("whatheheck");
         this.chain = [];
         this.height = -1;
         this.initializeChain();
@@ -37,7 +37,7 @@ class Blockchain {
     async initializeChain() {
         if( this.height === -1){
             let block = new BlockClass.Block({data: 'Genesis Block'});
-            await this._addBlock(block);
+            this._addBlock(block);
         }
     }
 
@@ -120,11 +120,10 @@ class Blockchain {
             try {
                 let lastTime = parseInt(message.split(':')[1]);
                 let currentTime = parseInt(new Date().getTime().toString().slice(0, -3));
-                if(currentTime - lastTime < 300) {
-                    console.log("holi")
+                star.address = address;
+                if(currentTime - lastTime < 3000) {
                     let verification = bitcoinMessage.verify(message, address, signature);
                     let block = new BlockClass.Block({data: star});
-                    console.log(block);
                     self._addBlock(block);
                     resolve(block);
                 }
@@ -181,13 +180,22 @@ class Blockchain {
         let self = this;
         let stars = [];
         return new Promise((resolve, reject) => {
-            self.chain.forEach(function(element) {
-                let decoded_star = JSON.parse(new Buffer(element, 'hex'));
-                if(address === decoded_star.address) {
-                    stars.push(decoded_star.body.toString());
-                }
-            });
-            resolve(stars);
+            try {
+                self.chain.forEach((element, index) => {
+                    let decoded_star = element.getBData();
+                    decoded_star.then(obj => {
+                        if(obj.data.address === address && index > 0) {
+                            stars.push({
+                                "owner": address,
+                                "star": obj.data
+                            });
+                        }
+                    })
+                });
+                resolve(stars);
+            } catch(error) {
+                reject(error);
+            }
         });
     }
 
@@ -204,21 +212,48 @@ class Blockchain {
             
                 try {
                     self.chain.forEach((block, index) => {
-
-                        errorLog.push(block.validate());
                         if(index != 0) {
-                            if(block.previousBlockHash != self.chain[index-1].hash) {
-                                reject("bu")
-                            }
+                            block.validate().then(isValidated => {
+                                if(!isValidated || block.previousBlockHash != self.chain[index-1].hash){
+                                    errorLog.push(index);
+                                };
+                            })
                         }
                         resolve(errorLog);
 
                     });
                 } catch(error) {
-
+                    reject(error);
                 }
         });
     }
 }
+
+
+let messa = "1HZwkjkeaoZfTSaJxDw6aKkxp45agDiEzN:1598495125:starRegistry";
+let signa = "HDZtEuRNG3tl0Lt2tRlfXYXvZnqHMETxdHXSarHTNNMwaJh+r9y+lYvmMSW3qKplEZoG4zATtYVfKfwYged+FK4=";
+let myb = new Blockchain();
+let b1 = myb.submitStar(
+        "1HZwkjkeaoZfTSaJxDw6aKkxp45agDiEzN",
+        messa,
+        signa,
+        {
+            "dec": "kkk",
+            "ra": "mmm",
+            "story": "Alfa"
+        }
+);
+
+let b2 = myb.submitStar(
+    "1HZwkjkeaoZfTSaJxDw6aKkxp45agDiEzN",
+    messa,
+    signa,
+    {
+        "dec": "kkk",
+        "ra": "mmm",
+        "story": "Mega"
+    }
+);
+
 
 module.exports.Blockchain = Blockchain;   
