@@ -38,12 +38,14 @@ class Block {
     validate() {
         let self = this;
         return new Promise((resolve, reject) => {
-
-            self.r_hash = SHA256(JSON.stringify(self)).toString()
             try {
-                resolve(self.hash === self.r_hash);
+                let r_hash = self.hash
+                self.hash = null
+                let newHash = SHA256(JSON.stringify(self)).toString()
+                self.hash = newHash
+                resolve(r_hash === newHash);
             } catch(error) {
-                reject("fuck you");
+                reject(error);
             }
 
             // Save in auxiliary variable the current block hash
@@ -75,7 +77,7 @@ class Block {
 
         return new Promise((resolve, reject) => {
             let self = this;
-            var dec_data = new Buffer(self.body, 'hex');
+            var dec_data = JSON.parse(new Buffer(self.body, 'hex'));
             resolve(dec_data);
         });
 
